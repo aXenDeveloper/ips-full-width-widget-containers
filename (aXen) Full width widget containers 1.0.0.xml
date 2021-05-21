@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin name="(aXen) Full width widget containers" version_long="10000" version_human="1.0.0" author="aXenDev" website="https://axendev.net/" update_check="https://files.axendev.net/projects/ips/plugins/fullwidgetcontainers/check.php"><hooks><hook type="C" class="\IPS\core\modules\front\system\widgets" filename="widgetContainers"><![CDATA[//<?php
+
+/* To prevent PHP errors (extending class does not exist) revealing path */
+if ( !\defined( '\IPS\SUITE_UNIQUE_KEY' ) )
+{
+	exit;
+}
+
+class hook172 extends _HOOK_CLASS_
+{
+	/**
+	 * Reorder Blocks
+	 *
+	 * @return	void
+	 */
+	protected function saveOrder()
+	{
+		try
+		{
+			if( !\in_array( \IPS\Request::i()->area, array( 'sidebar', 'header', 'footer', 'aXenWidgetContainers_headerFull', 'aXenWidgetContainers_footerFull' ) ) )
+			{
+				\IPS\Output::i()->error( 'invalid_widget_area', '3S172/2', 403, '' );
+			}
+	
+			\IPS\Session::i()->csrfCheck();
+			
+			$newOrder = array();
+			$seen     = array();
+			
+			try
+			{
+				$currentConfig = \IPS\Db::i()->select( '*', 'core_widget_areas', array( 'app=? AND module=? AND controller=? AND area=?', \IPS\Request::i()->pageApp, \IPS\Request::i()->pageModule, \IPS\Request::i()->pageController, \IPS\Request::i()->area ) )->first();
+				$widgets = json_decode( $currentConfig['widgets'], TRUE );
+			}
+			catch ( \UnderflowException $e )
+			{
+				$widgets = array();
+			}
+		
+			/* Loop over the new order and merge in current blocks so we don't lose config */
+			if ( isset ( \IPS\Request::i()->order ) )
+			{
+				foreach ( \IPS\Request::i()->order as $block )
+				{
+					$block = explode( "_", $block );
+					
+					$added = FALSE;
+					foreach( $widgets as $widget )
+					{
+						if ( $widget['key'] == $block[2] AND $widget['unique'] == $block[3] )
+						{
+							$seen[]     = $widget['unique'];
+							$newOrder[] = $widget;
+							$added = TRUE;
+							break;
+						}
+					}
+					if( !$added )
+					{
+						$newBlock = array();
+						
+						if ( $block[0] == 'app' )
+						{
+							$newBlock['app'] = $block[1];
+						}
+						else
+						{
+							$newBlock['plugin'] = $block[1];
+						}
+						
+						$newBlock['key'] 		= $block[2];
+						$newBlock['unique']		= $block[3];
+						$newBlock['configuration']	= array();
+						
+						/* Make sure this widget doesn't have configuration in another area */
+						$newBlock['configuration'] = \IPS\Widget::getConfiguration( $newBlock['unique'] );
+	
+						$seen[]     = $block[3];
+						$newOrder[] = $newBlock;
+					}
+				}
+			}
+	
+			/* Anything to update? */
+			if ( \count( $widgets ) > \count( $newOrder ) )
+			{
+				/* No items left in area, or one has been removed */
+				foreach( $widgets as $widget )
+				{
+					/* If we haven't seen this widget, it's been removed, so add to trash */
+					if ( ! \in_array( $widget['unique'], $seen ) )
+					{
+						\IPS\Widget::trash( $widget['unique'], $widget );
+					}
+				}
+			}
+	
+			/* Expire Caches so up to date information displays */
+			\IPS\Widget::deleteCaches();
+	
+			/* Save to database */
+			\IPS\Db::i()->replace( 'core_widget_areas', array( 'app' => \IPS\Request::i()->pageApp, 'module' => \IPS\Request::i()->pageModule, 'controller' => \IPS\Request::i()->pageController, 'widgets' => json_encode( $newOrder ), 'area' => \IPS\Request::i()->area ) );
+		}
+		catch ( \RuntimeException $e )
+		{
+			if ( method_exists( get_parent_class(), __FUNCTION__ ) )
+			{
+				return \call_user_func_array( 'parent::' . __FUNCTION__, \func_get_args() );
+			}
+			else
+			{
+				throw $e;
+			}
+		}
+	}
+}
+]]></hook><hook type="S" class="\IPS\Theme\class_core_front_global" filename="widgetContainers_template"><![CDATA[//<?php
+
+/* To prevent PHP errors (extending class does not exist) revealing path */
+if ( !\defined( '\IPS\SUITE_UNIQUE_KEY' ) )
+{
+	exit;
+}
+
+class hook173 extends _HOOK_CLASS_
+{
+
+/* !Hook Data - DO NOT REMOVE */
+public static function hookData() {
+ return array_merge_recursive( array (
+  'globalTemplate' => 
+  array (
+    0 => 
+    array (
+      'selector' => '#ipsLayout_contentWrapper',
+      'type' => 'add_before',
+      'content' => '{{if settings.aXenWidgetContainers_headerFull}}
+	{{$id = \'aXenWidgetContainers_headerFull\';}}
+	{{if isset( \IPS\Output::i()->sidebar[\'widgets\'][ $id ] )}}
+		<div class="ipsPadding_top md:ipsPadding:half">
+	{{endif}}
+		{template="widgetContainer" group="global" app="core" params="$id, \'horizontal\'"}
+	{{if isset( \IPS\Output::i()->sidebar[\'widgets\'][ $id ] )}}
+		</div>
+	{{endif}}
+{{endif}}',
+    ),
+    1 => 
+    array (
+      'selector' => '#ipsLayout_contentWrapper',
+      'type' => 'add_after',
+      'content' => '{{if settings.aXenWidgetContainers_footerFull}}
+	{{$id = \'aXenWidgetContainers_footerFull\';}}
+	{{if isset( \IPS\Output::i()->sidebar[\'widgets\'][ $id ] )}}
+		<div class="ipsMargin_top md:ipsMargin:half">
+	{{endif}}
+		{template="widgetContainer" group="global" app="core" params="$id, \'horizontal\'"}
+	{{if isset( \IPS\Output::i()->sidebar[\'widgets\'][ $id ] )}}
+		</div>
+	{{endif}}
+{{endif}}',
+    ),
+  ),
+), parent::hookData() );
+}
+/* End Hook Data */
+
+
+}
+]]></hook></hooks><settings><setting><key>aXenWidgetContainers_headerFull</key><default>1</default></setting><setting><key>aXenWidgetContainers_footerFull</key><default>1</default></setting></settings><settingsCode><![CDATA[//<?php
+
+	$form->add(new \IPS\Helpers\Form\YesNo('aXenWidgetContainers_headerFull', \IPS\Settings::i()->aXenWidgetContainers_headerFull));
+	$form->add(new \IPS\Helpers\Form\YesNo('aXenWidgetContainers_footerFull', \IPS\Settings::i()->aXenWidgetContainers_footerFull));
+
+	if ($values = $form->values()) {
+		$form->saveAsSettings();
+		return TRUE;
+	}
+
+	return $form;
+]]></settingsCode><htmlFiles/><cssFiles/><jsFiles/><resourcesFiles/><lang><word key="aXenWidgetContainers_headerFull" js="0">Enable widget container in header?</word><word key="aXenWidgetContainers_footerFull" js="0">Enable widget container in footer?</word></lang><versions><version long="10000" human="1.0.0"><![CDATA[//<?php
+
+
+/* To prevent PHP errors (extending class does not exist) revealing path */
+if ( !\defined( '\IPS\SUITE_UNIQUE_KEY' ) )
+{
+	header( ( isset( $_SERVER['SERVER_PROTOCOL'] ) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0' ) . ' 403 Forbidden' );
+	exit;
+}
+
+/**
+ * Install Code
+ */
+class ips_plugins_setup_install
+{
+	/**
+	 * ...
+	 *
+	 * @return	array	If returns TRUE, upgrader will proceed to next step. If it returns any other value, it will set this as the value of the 'extra' GET parameter and rerun this step (useful for loops)
+	 */
+	public function step1()
+	{
+		
+
+		return TRUE;
+	}
+	
+	// You can create as many additional methods (step2, step3, etc.) as is necessary.
+	// Each step will be executed in a new HTTP request
+}]]></version></versions></plugin>
