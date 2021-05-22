@@ -29,7 +29,4 @@ Adds two full-width widget containers (Header and Footer).
 
 ## 🔌 Download from other sources
 
-- [invisioncommunity.com](https://invisioncommunity.com/files/file/9886-axen-full-width-widget-containers/),
 - [invisionize.pl](https://forum.invisionize.pl/files/file/830-axen-full-width-widget-containers/)
-
-_The resources from the links above are updated on an ongoing basis if the administration approves the file._
