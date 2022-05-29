@@ -4,7 +4,7 @@ Adds two full-width widget containers (Header and Footer).
 
 ## 🏷️ Requirements
 
-- [IPS Community Suite: 4.5, 4.6 version](https://invisioncommunity.com/)
+- [IPS Community Suite: 4.5, 4.6, 4.7 version](https://invisioncommunity.com/)
 
 ## 🧰 Install
 
